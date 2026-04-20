@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Architecture Rasa</title>
+<style>
+/* ─── TOKENS ─────────────────────────────────────────── */
+:root {
+  --ink:      #1a1816;
+  --clay:     #b05228;
+  --sand:     #ede8df;
+  --parchment:#f7f3ed;
+  --cream:    #fdfaf5;
+  --grey:     #888077;
+  --line:     rgba(26,24,22,0.11);
+
+  --serif: Georgia, 'Times New Roman', serif;
+  --sans:  system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --ease:  cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ─── RESET ──────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; }
+body { background: var(--cream); color: var(--ink); font-family: var(--serif); overflow: hidden; height: 100dvh; width: 100vw; }
+img { display: block; width: 100%; height: 100%; object-fit: cover; }
+button { background: none; border: none; cursor: pointer; font-family: inherit; color: inherit; }
+
+/* ─── PAGE SYSTEM ────────────────────────────────────── */
+.page { position: absolute; inset: 0; opacity: 0; pointer-events: none; transition: opacity 0.5s var(--ease); overflow: hidden; }
+.page.active { opacity: 1; pointer-events: all; }
+
+/* ─── NAV ────────────────────────────────────────────── */
+nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 900;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 1.2rem 1.8rem;
+}
+/* Light nav — for dark-background pages (Work) */
+nav.nav-light .nav-logo,
+nav.nav-light .nav-links button { color: var(--cream); }
+nav.nav-light .nav-logo sub { color: rgba(253,250,245,0.5); }
+nav.nav-light .nav-links button { opacity: 0.6; }
+nav.nav-light .nav-links button:hover,
+nav.nav-light .nav-links button.anav { opacity: 1; border-bottom-color: rgba(253,250,245,0.45); }
+nav.nav-light .nav-contact { color: rgba(253,250,245,0.8) !important; }
+nav.nav-light .hamburger span { background: var(--cream); }
+
+.nav-logo {
+  font-family: var(--sans); font-size: 0.77rem; font-weight: 600;
+  letter-spacing: 0.13em; color: var(--ink); text-transform: uppercase;
+  line-height: 1.25; cursor: pointer;
+}
+.nav-logo sub {
+  display: block; font-size: 0.57rem; font-weight: 400;
+  letter-spacing: 0.2em; color: var(--grey); text-transform: uppercase;
+}
+.nav-links { display: flex; gap: 1.8rem; align-items: center; }
+.nav-links button {
+  font-family: var(--sans); font-size: 0.72rem; letter-spacing: 0.05em;
+  color: var(--ink); opacity: 0.48; transition: opacity 0.2s;
+  padding: 0.15rem 0; border-bottom: 1px solid transparent;
+}
+.nav-links button:hover, .nav-links button.anav { opacity: 1; border-bottom-color: var(--clay); }
+.nav-contact { opacity: 1 !important; color: var(--clay) !important; border-bottom-color: var(--clay) !important; }
+
+/* Hamburger */
+.hamburger { display: none; flex-direction: column; gap: 5px; padding: 4px; cursor: pointer; }
+.hamburger span { display: block; width: 22px; height: 1.5px; background: var(--ink); transition: all 0.3s; }
+.hamburger.open span:nth-child(1) { transform: translateY(6.5px) rotate(45deg); }
+.hamburger.open span:nth-child(2) { opacity: 0; }
+.hamburger.open span:nth-child(3) { transform: translateY(-6.5px) rotate(-45deg); }
+
+/* Mobile menu */
+.mobile-menu {
+  position: fixed; inset: 0; z-index: 850; background: var(--cream);
+  display: flex; flex-direction: column; justify-content: center; padding: 2rem;
+  transform: translateX(100%); transition: transform 0.4s var(--ease);
+}
+.mobile-menu.open { transform: translateX(0); }
+.mobile-menu button {
+  font-family: var(--serif); font-size: 1.9rem; font-weight: 400;
+  color: var(--ink); padding: 0.85rem 0; border-bottom: 1px solid var(--line);
+  text-align: left; width: 100%;
+}
+.mobile-menu button:first-child { border-top: 1px solid var(--line); }
+.mm-contact { font-style: italic; color: var(--clay) !important; }
+
+/* Curtain */
+.curtain { position: fixed; inset: 0; z-index: 800; background: var(--sand); transform: scaleY(0); transform-origin: bottom; pointer-events: none; }
+.curtain.in  { animation: cin  0.35s cubic-bezier(0.7,0,0.84,0) forwards; }
+.curtain.out { animation: cout 0.35s var(--ease) forwards; }
+@keyframes cin  { to { transform: scaleY(1); } }
+@keyframes cout { from { transform:scaleY(1);transform-origin:top; } to { transform:scaleY(0);transform-origin:top; } }
+
+/* ═══════════════════════ HOME ═══════════════════════ */
+#page-home {
+  display: grid; grid-template-columns: 210px 1fr 190px;
+  height: 100dvh; background: var(--cream);
+}
+.h-left {
+  display: flex; flex-direction: column; justify-content: flex-end;
+  padding: 2rem 1.6rem 4.5rem; border-right: 1px solid var(--line); background: var(--parchment);
+}
+.h-quote { font-size: 0.9rem; font-style: italic; color: var(--grey); line-height: 1.75; margin-bottom: 2.5rem; }
+.h-stats { display: flex; flex-direction: column; gap: 1.2rem; }
+.stat { display: flex; flex-direction: column; gap: 2px; padding-bottom: 1rem; border-bottom: 1px solid var(--line); }
+.stat-n { font-family: var(--sans); font-size: 1.3rem; font-weight: 700; color: var(--clay); }
+.stat-l { font-family: var(--sans); font-size: 0.6rem; letter-spacing: 0.13em; color: var(--grey); text-transform: uppercase; }
+
+.h-center { position: relative; overflow: hidden; }
+.h-center img { width: 100%; height: 100%; object-fit: cover; transition: transform 9s ease; }
+#page-home.active .h-center img { transform: scale(1.04); }
+.h-overlay { position: absolute; inset: 0; background: linear-gradient(to top, rgba(20,16,12,0.62) 0%, transparent 55%); pointer-events: none; }
+.h-text { position: absolute; bottom: 4.5rem; left: 2rem; right: 2rem; }
+.h-text h1 { font-size: clamp(2.5rem,5vw,5rem); font-weight: 300; color: #fdfaf5; line-height: 1.05; }
+.h-text h1 em { font-style: italic; color: #e8c49a; }
+.h-loc { position: absolute; bottom: 1.8rem; left: 2rem; font-family: var(--sans); font-size: 0.62rem; letter-spacing: 0.15em; color: rgba(253,250,245,0.42); text-transform: uppercase; }
+
+.h-right {
+  display: flex; flex-direction: column; justify-content: center;
+  padding: 2rem 1.4rem; border-left: 1px solid var(--line); background: var(--parchment);
+}
+.h-right-lbl { font-family: var(--sans); font-size: 0.58rem; letter-spacing: 0.18em; color: var(--grey); text-transform: uppercase; margin-bottom: 0.8rem; }
+.hni { display: flex; align-items: center; gap: 0.8rem; padding: 0.9rem 0; border-bottom: 1px solid var(--line); cursor: pointer; transition: padding-left 0.25s var(--ease); }
+.hni:first-of-type { border-top: 1px solid var(--line); }
+.hni:hover { padding-left: 0.5rem; }
+.hni:hover .hni-a { transform: translateX(3px); color: var(--clay); }
+.hni-n { font-family: var(--sans); font-size: 0.55rem; color: var(--grey); min-width: 1.4rem; }
+.hni-t { font-family: var(--sans); font-size: 0.68rem; font-weight: 500; letter-spacing: 0.04em; color: var(--ink); flex: 1; }
+.hni-a { font-size: 0.85rem; color: var(--grey); transition: all 0.25s; }
+
+.h-bar { position: absolute; bottom: 0; left: 0; right: 0; display: flex; align-items: center; padding: 0.9rem 1.8rem; border-top: 1px solid var(--line); background: var(--cream); z-index: 5; }
+.h-bar span { font-family: var(--sans); font-size: 0.58rem; letter-spacing: 0.11em; color: var(--grey); text-transform: uppercase; }
+.h-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--clay); margin: 0 1.2rem; flex-shrink: 0; }
+
+/* ═══════════════════════ WORK ═══════════════════════ */
+#page-work { display: grid; grid-template-rows: auto 1fr auto; height: 100dvh; background: #141210; color: var(--sand); }
+.w-head { padding: 4.8rem 1.8rem 1.2rem; display: flex; align-items: flex-end; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.08); }
+.w-head h2 { font-size: clamp(1.6rem,3.5vw,2.8rem); font-weight: 300; color: var(--sand); line-height: 1; }
+.w-head h2 em { font-style: italic; color: #e8c49a; }
+.w-cnt { font-family: var(--sans); font-size: 0.6rem; color: rgba(237,232,223,0.32); letter-spacing: 0.14em; }
+
+.g-body { display: grid; grid-template-columns: 1fr 1fr; overflow: hidden; min-height: 0; }
+.g-main { position: relative; overflow: hidden; border-right: 1px solid rgba(255,255,255,0.07); }
+.g-main img { width: 100%; height: 100%; object-fit: cover; }
+.g-main-ov { position: absolute; inset: 0; background: linear-gradient(to top,rgba(14,12,10,.8) 0%,transparent 55%); pointer-events: none; }
+.g-info { position: absolute; bottom: 1.8rem; left: 1.8rem; right: 1.8rem; }
+.g-cat { font-family: var(--sans); font-size: 0.6rem; letter-spacing: 0.17em; color: #e8c49a; text-transform: uppercase; margin-bottom: 0.4rem; }
+.g-title { font-size: clamp(1.2rem,2.5vw,2rem); font-weight: 300; color: var(--sand); line-height: 1.15; }
+.g-sub { font-family: var(--sans); font-size: 0.58rem; color: rgba(237,232,223,0.42); letter-spacing: 0.1em; margin-top: 0.35rem; }
+
+.g-side { display: flex; flex-direction: column; padding: 1.2rem; overflow: hidden; }
+.g-side-lbl { font-family: var(--sans); font-size: 0.57rem; letter-spacing: 0.18em; color: rgba(237,232,223,0.22); text-transform: uppercase; margin-bottom: 0.8rem; }
+.g-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 0.55rem; flex: 1; min-height: 0; }
+.g-tile { position: relative; overflow: hidden; cursor: pointer; border: 1.5px solid transparent; transition: border-color 0.25s, transform 0.25s; }
+.g-tile:hover { transform: scale(1.02); }
+.g-tile.ta { border-color: var(--clay); }
+.g-tile img { width: 100%; height: 100%; object-fit: cover; transition: filter 0.25s; }
+.g-tile:not(.ta) img { filter: brightness(0.42); }
+.g-tile-lbl { position: absolute; bottom: 0; left: 0; right: 0; padding: 0.5rem 0.55rem; background: linear-gradient(to top,rgba(14,12,10,.85),transparent); font-family: var(--sans); font-size: 0.5rem; letter-spacing: 0.12em; color: rgba(237,232,223,0.75); text-transform: uppercase; }
+.g-tile-i { position: absolute; top: 0.4rem; left: 0.5rem; font-family: var(--sans); font-size: 0.48rem; color: rgba(237,232,223,0.28); }
+.g-spd { margin-top: 0.7rem; height: 1.5px; background: rgba(255,255,255,0.07); border-radius: 1px; position: relative; overflow: hidden; }
+.g-spd-fill { position: absolute; top: 0; left: 0; height: 100%; background: var(--clay); width: 0%; transition: width 0.1s linear; border-radius: 1px; }
+
+.filmstrip { display: flex; align-items: center; padding: 0.65rem 1.8rem; gap: 0.4rem; border-top: 1px solid rgba(255,255,255,0.07); overflow: hidden; }
+.film-track { display: flex; gap: 0.4rem; flex: 1; overflow: hidden; }
+.film-it { flex: 0 0 68px; height: 44px; cursor: pointer; overflow: hidden; border: 1.5px solid transparent; border-radius: 1px; transition: border-color 0.2s; }
+.film-it:hover { border-color: rgba(237,232,223,0.22); }
+.film-it.fa { border-color: var(--clay); }
+.film-it img { width: 100%; height: 100%; object-fit: cover; transition: filter 0.2s; }
+.film-it:not(.fa) img { filter: brightness(0.38); }
+
+/* Mobile project tabs */
+.mob-tabs { display: none; }
+
+/* ═══════════════════════ MATTER ═══════════════════════ */
+#page-matter { display: grid; grid-template-columns: 240px 1fr; height: 100dvh; background: var(--parchment); }
+.m-sidebar { border-right: 1px solid var(--line); padding: 4.8rem 1.6rem 2rem; display: flex; flex-direction: column; overflow-y: auto; }
+.m-sidebar h2 { font-size: 1.85rem; font-weight: 300; line-height: 1.1; color: var(--ink); margin-bottom: 0.25rem; }
+.m-sidebar h2 em { font-style: italic; color: var(--clay); }
+.m-sub { font-family: var(--sans); font-size: 0.58rem; letter-spacing: 0.15em; color: var(--grey); text-transform: uppercase; margin-bottom: 2rem; }
+.m-list { display: flex; flex-direction: column; }
+.m-item { padding: 1rem 0; border-bottom: 1px solid var(--line); cursor: pointer; }
+.m-item:first-child { border-top: 1px solid var(--line); }
+.m-item-tag { font-family: var(--sans); font-size: 0.52rem; letter-spacing: 0.15em; color: var(--clay); text-transform: uppercase; margin-bottom: 0.25rem; }
+.m-item-title { font-size: 0.92rem; color: var(--ink); line-height: 1.35; transition: color 0.2s; }
+.m-item:hover .m-item-title, .m-item.ma .m-item-title { color: var(--clay); }
+.m-item-date { font-family: var(--sans); font-size: 0.52rem; color: var(--grey); margin-top: 0.25rem; }
+
+.m-content { overflow-y: auto; padding: 4.8rem 3.5rem 3.5rem; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+.m-content::-webkit-scrollbar { width: 3px; }
+.m-content::-webkit-scrollbar-thumb { background: var(--line); }
+
+.a-panel { display: none; max-width: 640px; animation: fadeup 0.4s var(--ease) both; }
+.a-panel.aa { display: block; }
+@keyframes fadeup { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
+.a-tag { font-family: var(--sans); font-size: 0.6rem; letter-spacing: 0.18em; color: var(--clay); text-transform: uppercase; margin-bottom: 0.65rem; }
+.a-title { font-size: clamp(1.6rem,3vw,2.4rem); font-weight: 300; line-height: 1.1; color: var(--ink); margin-bottom: 0.45rem; }
+.a-title em { font-style: italic; color: var(--clay); }
+.a-meta { font-family: var(--sans); font-size: 0.58rem; color: var(--grey); letter-spacing: 0.07em; margin-bottom: 2rem; padding-bottom: 1.7rem; border-bottom: 1px solid var(--line); }
+.a-body { font-size: 1rem; line-height: 1.85; color: var(--ink); }
+.a-body p { margin-bottom: 1.3rem; }
+.a-body p:first-child::first-letter { font-size: 3.2em; font-weight: 600; float: left; line-height: 0.78; margin-right: 0.1em; color: var(--clay); font-style: italic; }
+.pull { font-style: italic; font-size: 1.18rem; color: var(--ink); border-left: 2px solid var(--clay); padding-left: 1.4rem; margin: 2rem 0; line-height: 1.55; }
+.a-img { width: 100%; aspect-ratio: 16/9; overflow: hidden; margin: 2rem 0; }
+.a-img img { width: 100%; height: 100%; object-fit: cover; }
+.a-cap { font-family: var(--sans); font-size: 0.53rem; color: var(--grey); letter-spacing: 0.1em; margin-top: 0.4rem; text-transform: uppercase; }
+
+/* ═══════════════════════ EXPERTISE ═══════════════════════ */
+#page-expertise { display: grid; grid-template-rows: auto 1fr; height: 100dvh; background: var(--sand); overflow: hidden; }
+.e-head { padding: 4.8rem 1.8rem 1.2rem; display: flex; align-items: flex-end; justify-content: space-between; border-bottom: 1px solid var(--line); }
+.e-head h2 { font-size: clamp(1.6rem,3.5vw,2.6rem); font-weight: 300; color: var(--ink); line-height: 1; }
+.e-head h2 em { font-style: italic; color: var(--clay); }
+.e-head p { font-family: var(--sans); font-size: 0.62rem; letter-spacing: 0.07em; color: var(--grey); max-width: 250px; text-align: right; line-height: 1.65; }
+.e-grid { display: grid; grid-template-columns: repeat(4,1fr); grid-template-rows: 1fr 1fr; overflow: hidden; }
+.e-tile { position: relative; overflow: hidden; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); background: var(--parchment); transition: background 0.35s; padding: 1.2rem; }
+.e-tile:hover { background: var(--ink); }
+.e-tile:hover .et-n  { color: rgba(176,82,40,0.7); }
+.e-tile:hover .et-title, .e-tile:hover .et-desc { color: rgba(237,232,223,0.85); }
+.e-tile:hover .et-ico { opacity: 0.055; transform: scale(1.1); }
+.et-n { font-family: var(--sans); font-size: 0.52rem; color: var(--grey); letter-spacing: 0.15em; transition: color 0.35s; margin-bottom: 0.35rem; }
+.et-ico { font-size: 3.2rem; opacity: 0.04; display: block; transition: all 0.35s; user-select: none; margin-bottom: 0.35rem; }
+.et-title { font-size: 0.94rem; color: var(--ink); line-height: 1.3; transition: color 0.35s; }
+.et-title em { font-style: italic; }
+.et-desc { font-family: var(--sans); font-size: 0.57rem; color: var(--grey); line-height: 1.55; transition: color 0.35s; margin-top: 0.45rem; }
+.e-tile.wide { grid-column: span 2; }
+
+/* ═══════════════════════ STUDIO ═══════════════════════ */
+#page-about { display: grid; grid-template-columns: 1fr 1fr; height: 100dvh; overflow: hidden; }
+.ab-img { position: relative; overflow: hidden; background: #111; }
+.ab-img img { width: 100%; height: 100%; object-fit: cover; opacity: 0.72; transition: opacity 0.5s, transform 9s ease; }
+#page-about.active .ab-img img { opacity: 0.78; transform: scale(1.04); }
+.ab-img-ov { position: absolute; inset: 0; background: linear-gradient(140deg,rgba(176,82,40,0.18) 0%,rgba(14,12,10,0.45) 100%); }
+.ab-img-lbl { position: absolute; bottom: 1.8rem; left: 1.8rem; font-family: var(--sans); font-size: 0.58rem; letter-spacing: 0.15em; color: rgba(237,232,223,0.42); text-transform: uppercase; }
+.ab-text { overflow-y: auto; padding: 5rem 3rem 3.5rem; background: var(--cream); scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+.ab-text::-webkit-scrollbar { width: 3px; }
+.ab-text::-webkit-scrollbar-thumb { background: var(--line); }
+.ab-lbl { font-family: var(--sans); font-size: 0.6rem; letter-spacing: 0.18em; color: var(--clay); text-transform: uppercase; margin-bottom: 0.9rem; }
+.ab-name { font-size: clamp(1.8rem,3vw,2.8rem); font-weight: 300; line-height: 1.05; color: var(--ink); margin-bottom: 0.3rem; }
+.ab-name em { font-style: italic; color: var(--clay); }
+.ab-role { font-family: var(--sans); font-size: 0.62rem; letter-spacing: 0.11em; color: var(--grey); margin-bottom: 2rem; padding-bottom: 1.8rem; border-bottom: 1px solid var(--line); }
+.ab-body { font-size: 0.97rem; line-height: 1.8; color: var(--ink); }
+.ab-body p { margin-bottom: 1.2rem; }
+.ab-focus { margin: 1.8rem 0; padding: 1.3rem; background: var(--parchment); border-left: 2px solid var(--clay); }
+.ab-focus-t { font-family: var(--sans); font-size: 0.58rem; letter-spacing: 0.15em; color: var(--clay); text-transform: uppercase; margin-bottom: 0.8rem; }
+.fi { display: flex; gap: 0.65rem; align-items: flex-start; margin-bottom: 0.5rem; font-family: var(--sans); font-size: 0.62rem; color: var(--ink); line-height: 1.5; }
+.fi-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--clay); margin-top: 0.42rem; flex-shrink: 0; }
+.ab-actions { display: flex; gap: 0.75rem; margin-top: 2rem; padding-top: 1.8rem; border-top: 1px solid var(--line); flex-wrap: wrap; }
+.ab-btn { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.72rem 1.25rem; font-family: var(--sans); font-size: 0.64rem; letter-spacing: 0.09em; text-transform: uppercase; cursor: pointer; transition: all 0.25s; }
+.ab-btn.p { background: var(--clay); color: var(--cream); border: 1px solid var(--clay); }
+.ab-btn.p:hover { background: var(--ink); border-color: var(--ink); }
+.ab-btn.s { border: 1px solid var(--line); color: var(--ink); }
+.ab-btn.s:hover { border-color: var(--clay); color: var(--clay); }
+
+/* ═══════════════════════ MODAL ═══════════════════════ */
+.modal-bg { position: fixed; inset: 0; z-index: 950; background: rgba(20,18,16,0.88); backdrop-filter: blur(10px); display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.35s; padding: 1rem; }
+.modal-bg.open { opacity: 1; pointer-events: all; }
+.modal-box { background: var(--cream); padding: 2.5rem; max-width: 440px; width: 100%; position: relative; transform: translateY(22px); transition: transform 0.35s var(--ease); }
+.modal-bg.open .modal-box { transform: translateY(0); }
+.m-close { position: absolute; top: 1rem; right: 1.2rem; font-size: 1.1rem; color: var(--grey); cursor: pointer; transition: color 0.2s; }
+.m-close:hover { color: var(--clay); }
+.m-title { font-size: 1.8rem; font-weight: 300; margin-bottom: 0.25rem; }
+.m-title em { font-style: italic; color: var(--clay); }
+.m-sub { font-family: var(--sans); font-size: 0.58rem; color: var(--grey); letter-spacing: 0.09em; margin-bottom: 1.8rem; }
+.mf { margin-bottom: 1rem; }
+.mf label { display: block; font-family: var(--sans); font-size: 0.57rem; letter-spacing: 0.15em; color: var(--grey); text-transform: uppercase; margin-bottom: 0.32rem; }
+.mf input, .mf textarea { width: 100%; padding: 0.72rem; background: var(--parchment); border: 1px solid var(--line); font-family: var(--serif); font-size: 0.95rem; color: var(--ink); outline: none; resize: vertical; transition: border-color 0.2s; }
+.mf input:focus, .mf textarea:focus { border-color: var(--clay); }
+.m-submit { width: 100%; padding: 0.88rem; background: var(--clay); color: var(--cream); font-family: var(--sans); font-size: 0.64rem; letter-spacing: 0.13em; text-transform: uppercase; border: none; cursor: pointer; transition: background 0.25s; margin-top: 0.4rem; }
+.m-submit:hover { background: var(--ink); }
+.m-info { display: flex; gap: 1.4rem; flex-wrap: wrap; margin-top: 1.4rem; padding-top: 1.4rem; border-top: 1px solid var(--line); }
+.m-info-i { font-family: var(--sans); font-size: 0.58rem; color: var(--grey); line-height: 1.65; }
+.m-info-i strong { display: block; color: var(--ink); margin-bottom: 1px; }
+
+/* Footer */
+.fbar { position: fixed; bottom: 0; left: 0; right: 0; display: flex; align-items: center; justify-content: space-between; padding: 0 1.8rem; height: 2.5rem; z-index: 200; pointer-events: none; }
+.fbar span { font-family: var(--sans); font-size: 0.55rem; letter-spacing: 0.11em; color: var(--grey); text-transform: uppercase; }
+.fbar-cta { pointer-events: all; font-family: var(--sans); font-size: 0.57rem; letter-spacing: 0.11em; color: var(--clay); cursor: pointer; border-bottom: 1px solid var(--clay); padding-bottom: 1px; text-transform: uppercase; transition: color 0.2s; }
+.fbar-cta:hover { color: var(--ink); border-bottom-color: var(--ink); }
+
+/* ═══════════════════════ MOBILE ═══════════════════════ */
+@media (max-width: 768px) {
+  body { overflow-y: auto; height: auto; }
+  .fbar { display: none; }
+  .nav-links { display: none; }
+  .hamburger { display: flex; }
+
+  /* Pages become block-level in flow */
+  .page { position: relative; opacity: 1; pointer-events: all; height: auto; overflow: visible; display: none; }
+  .page.active { display: block; }
+
+  /* HOME */
+  #page-home { display: flex; flex-direction: column; height: auto; min-height: 100dvh; }
+  .h-left { display: none; }
+  .h-right { display: none; }
+  .h-center { min-height: 60dvh; }
+  .h-bar { position: relative; flex-wrap: wrap; gap: 0.5rem; padding: 0.9rem 1.2rem; }
+  .h-dot { display: none; }
+
+  .mob-home-nav { display: flex; flex-direction: column; padding: 0 1.2rem 5rem; background: var(--parchment); }
+  .mob-home-nav .hni { padding: 1.1rem 0; }
+  .mob-home-nav .hni-t { font-size: 1rem; }
+  .mob-home-nav .hni-n { display: none; }
+
+  /* WORK */
+  #page-work { height: auto; display: flex; flex-direction: column; }
+  .g-body { grid-template-columns: 1fr; }
+  .g-main { min-height: 56vw; }
+  .g-side { display: none; }
+  .w-cnt { display: none; }
+  .mob-tabs { display: flex; overflow-x: auto; border-top: 1px solid rgba(255,255,255,0.07); }
+  .mob-tab { flex: 0 0 auto; padding: 0.9rem 1.2rem; font-family: var(--sans); font-size: 0.62rem; letter-spacing: 0.07em; color: rgba(237,232,223,0.4); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; white-space: nowrap; }
+  .mob-tab.ta { color: var(--sand); border-bottom-color: var(--clay); }
+  .filmstrip { overflow-x: auto; }
+  .film-track { overflow-x: auto; }
+
+  /* MATTER */
+  #page-matter { grid-template-columns: 1fr; display: flex; flex-direction: column; height: auto; }
+  .m-sidebar { border-right: none; border-bottom: 1px solid var(--line); padding: 4.5rem 1.2rem 1.2rem; overflow: visible; }
+  .m-list { flex-direction: row; overflow-x: auto; gap: 0.5rem; padding-bottom: 0.3rem; }
+  .m-item { flex: 0 0 200px; border: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 0.8rem; }
+  .m-item:first-child { border-top: 1px solid var(--line); }
+  .m-content { padding: 1.8rem 1.2rem 4rem; overflow: visible; }
+
+  /* EXPERTISE */
+  #page-expertise { height: auto; }
+  .e-grid { grid-template-columns: 1fr 1fr; grid-template-rows: auto; }
+  .e-tile.wide { grid-column: span 2; }
+  .e-tile { min-height: 130px; }
+  .e-head { flex-direction: column; align-items: flex-start; gap: 0.6rem; }
+  .e-head p { text-align: left; max-width: 100%; }
+
+  /* STUDIO */
+  #page-about { grid-template-columns: 1fr; height: auto; }
+  .ab-img { min-height: 55vw; }
+  .ab-text { padding: 2.5rem 1.2rem 4rem; overflow: visible; }
+
+  /* Modal */
+  .modal-box { padding: 1.8rem; }
+  .m-info { gap: 1rem; }
+}
+
+@media (max-width: 480px) {
+  .e-grid { grid-template-columns: 1fr; }
+  .e-tile.wide { grid-column: span 1; }
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav id="main-nav">
+  <div class="nav-logo" onclick="showPage('home')">Architecture<sub>Rasa</sub></div>
+  <div class="nav-links">
+    <button onclick="showPage('work')"      id="nw">Work</button>
+    <button onclick="showPage('matter')"    id="nm">The Matter</button>
+    <button onclick="showPage('expertise')" id="ne">Expertise</button>
+    <button onclick="showPage('about')"     id="na">Studio</button>
+    <button onclick="openContact()" class="nav-contact">Contact</button>
+  </div>
+  <div class="hamburger" id="hbg" onclick="toggleMenu()"><span></span><span></span><span></span></div>
+</nav>
+
+<!-- Mobile Menu -->
+<div class="mobile-menu" id="mob-menu">
+  <button onclick="mNav('work')">Work</button>
+  <button onclick="mNav('matter')">The Matter</button>
+  <button onclick="mNav('expertise')">Expertise</button>
+  <button onclick="mNav('about')">Studio</button>
+  <button class="mm-contact" onclick="mNav('contact')">Contact</button>
+</div>
+
+<div class="curtain" id="curtain"></div>
+
+<!-- ════════════ HOME ════════════ -->
+<section class="page active" id="page-home">
+  <div class="h-left">
+    <p class="h-quote">We work at the intersection of place, climate, and the way people actually live.</p>
+    <div class="h-stats">
+      <div class="stat"><span class="stat-n">7+</span><span class="stat-l">Years practice</span></div>
+      <div class="stat"><span class="stat-n">3</span><span class="stat-l">Active projects</span></div>
+      <div class="stat"><span class="stat-n">Jaipur</span><span class="stat-l">Rajasthan</span></div>
+    </div>
+  </div>
+
+  <div class="h-center">
+    <img src="images/farmhouse_exterior.png" alt="Farmhouse, Rajasthan" />
+    <div class="h-overlay"></div>
+    <div class="h-text"><h1>Space.<br/><em>Story.</em><br/>Soul.</h1></div>
+    <div class="h-loc">Architecture Rasa — Jaipur</div>
+  </div>
+
+  <div class="h-right">
+    <p class="h-right-lbl">Explore</p>
+    <div class="hni" onclick="showPage('work')"><span class="hni-n">01</span><span class="hni-t">Work</span><span class="hni-a">→</span></div>
+    <div class="hni" onclick="showPage('matter')"><span class="hni-n">02</span><span class="hni-t">The Matter</span><span class="hni-a">→</span></div>
+    <div class="hni" onclick="showPage('expertise')"><span class="hni-n">03</span><span class="hni-t">Expertise</span><span class="hni-a">→</span></div>
+    <div class="hni" onclick="showPage('about')"><span class="hni-n">04</span><span class="hni-t">Studio</span><span class="hni-a">→</span></div>
+    <div class="hni" onclick="openContact()"><span class="hni-n">05</span><span class="hni-t">Contact</span><span class="hni-a">↗</span></div>
+  </div>
+
+  <!-- Mobile nav strip (shown via JS on small screens) -->
+  <div class="mob-home-nav" id="mob-home-nav" style="display:none">
+    <div class="hni" onclick="showPage('work')"><span class="hni-t">Work</span><span class="hni-a">→</span></div>
+    <div class="hni" onclick="showPage('matter')"><span class="hni-t">The Matter</span><span class="hni-a">→</span></div>
+    <div class="hni" onclick="showPage('expertise')"><span class="hni-t">Expertise</span><span class="hni-a">→</span></div>
+    <div class="hni" onclick="showPage('about')"><span class="hni-t">Studio</span><span class="hni-a">→</span></div>
+    <div class="hni" onclick="openContact()"><span class="hni-t">Contact</span><span class="hni-a">↗</span></div>
+  </div>
+
+  <div class="h-bar">
+    <span>Architecture Rasa</span><div class="h-dot"></div>
+    <span>Jaipur, Rajasthan</span><div class="h-dot"></div>
+    <span>Est. 2017</span>
+  </div>
+</section>
+
+<!-- ════════════ WORK ════════════ -->
+<section class="page" id="page-work">
+  <div class="w-head">
+    <h2>Selected <em>Works</em></h2>
+    <span class="w-cnt">03 Projects</span>
+  </div>
+  <div class="g-body">
+    <div class="g-main">
+      <img id="g-img" src="images/cafe_1.jpeg" alt="" />
+      <div class="g-main-ov"></div>
+      <div class="g-info">
+        <div class="g-cat" id="g-cat">Hospitality · Bandra West, Mumbai</div>
+        <div class="g-title" id="g-title">Cave Café</div>
+        <div class="g-sub" id="g-sub">Concept — Privacy of Cave with Individual Spaces</div>
+      </div>
+    </div>
+    <div class="g-side">
+      <div class="g-side-lbl">Projects</div>
+      <div class="g-tiles">
+        <div class="g-tile ta" onclick="selProj(0)">
+          <img src="images/cafe_1.jpeg" alt="Café" /><div class="g-tile-i">01</div><div class="g-tile-lbl">Cave Café</div>
+        </div>
+        <div class="g-tile" onclick="selProj(1)">
+          <img src="images/farmhouse_exterior.png" alt="Farmhouse" /><div class="g-tile-i">02</div><div class="g-tile-lbl">Farmhouse</div>
+        </div>
+        <div class="g-tile" onclick="selProj(2)">
+          <img src="images/jat_3.png" alt="JAT" /><div class="g-tile-i">03</div><div class="g-tile-lbl">JAT Chatravas</div>
+        </div>
+        <div class="g-tile" style="cursor:default;opacity:0.22">
+          <div style="height:100%;background:#1d1b19;display:flex;align-items:center;justify-content:center"><span style="font-family:var(--sans);font-size:0.5rem;letter-spacing:0.16em;color:rgba(237,232,223,0.28)">UPCOMING</span></div>
+          <div class="g-tile-i" style="opacity:0.25">04</div>
+        </div>
+      </div>
+      <div class="g-spd"><div class="g-spd-fill" id="g-spd-fill"></div></div>
+    </div>
+  </div>
+
+  <!-- Mobile project tabs -->
+  <div class="mob-tabs" id="mob-tabs">
+    <div class="mob-tab ta" onclick="selProj(0)">Cave Café</div>
+    <div class="mob-tab" onclick="selProj(1)">Farmhouse</div>
+    <div class="mob-tab" onclick="selProj(2)">JAT Chatravas</div>
+  </div>
+
+  <div class="filmstrip">
+    <div class="film-track" id="film-track"></div>
+  </div>
+</section>
+
+<!-- ════════════ MATTER ════════════ -->
+<section class="page" id="page-matter">
+  <div class="m-sidebar">
+    <h2>The <em>Matter</em></h2>
+    <p class="m-sub">Notes · Essays · Research</p>
+    <div class="m-list">
+      <div class="m-item ma" onclick="selArt(0)">
+        <div class="m-item-tag">Essay</div>
+        <div class="m-item-title">A Case for Verandahs</div>
+        <div class="m-item-date">2025 — Ar. Amit Rasa</div>
+      </div>
+      <div class="m-item" onclick="selArt(1)">
+        <div class="m-item-tag">Case Study · WIP</div>
+        <div class="m-item-title">Stone, Shadow &amp; Breeze</div>
+        <div class="m-item-date">2024 — Microclimate, Jaipur</div>
+      </div>
+      <div class="m-item" onclick="selArt(2)">
+        <div class="m-item-tag">Visual Notes</div>
+        <div class="m-item-title">Cave Café: Designing for Privacy</div>
+        <div class="m-item-date">2024 — Studio</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="m-content">
+
+    <div class="a-panel aa" id="a-0">
+      <div class="a-tag">Essay · Vernacular Architecture</div>
+      <h1 class="a-title">A Case for <em>Verandahs</em></h1>
+      <div class="a-meta">Ar. Amit Rasa · 2025 · Vernacular · Social Living</div>
+      <div class="a-body">
+        <p>Ar. Amit grew up between villages and cities. Having seen the breadth of rural homes alongside dense urban neighbourhoods, he studied what traditional houses actually do — how they hold light, mediate between family and stranger, and support different modes of living through the day.</p>
+        <div class="pull">"The verandah is not wasted space. It is where life actually happens."</div>
+        <p>In the growing conversation around Vernacular Architecture, the studio is interested in one question: can the verandah and courtyard — long associated with bungalows and havelis — be adapted for apartment buildings with constrained floor plates?</p>
+        <div class="a-img"><img src="images/farmhouse_interior.png" alt="Farmhouse interior" /></div>
+        <div class="a-cap">Residential Farmhouse, Rajasthan — open-plan interior with garden court</div>
+        <p>Traditional Indian homes operated as nested social ecosystems: an outermost verandah, a semi-private courtyard, and inner rooms. This gradient shaped how people moved, conversed, and rested through the day. The studio is working on a modular typology that brings some of that structure to multi-storey housing. The work is ongoing.</p>
+      </div>
+    </div>
+
+    <div class="a-panel" id="a-1">
+      <div class="a-tag">Case Study · Work in Progress</div>
+      <h1 class="a-title">Stone, Shadow <em>&amp; Breeze</em></h1>
+      <div class="a-meta">Ar. Amit Rasa · 2024 · Heritage + Microclimate · Jaipur</div>
+      <div class="a-body">
+        <p>Jaipur summers are harsh. In peak heat, surface temperatures breach 47°C. And yet inside an older haveli, the air can drop by 6–8 degrees without mechanical cooling. The answer is stone, geometry, and the Jali.</p>
+        <div class="pull">"The Hawa Mahal was a calibrated climate machine — 953 windows, each placed with care."</div>
+        <p>This project applies that principle to a contemporary plot: south-facing, covered on three sides. Rather than fight the orientation, the studio introduced a stone Jali screen as a secondary skin, separated from the wall by an air cavity. Hot air rises through the gap, drawing cooler air inward at ground level.</p>
+        <div class="a-img"><img src="images/jat_1.png" alt="Facade study" /></div>
+        <div class="a-cap">Facade study — perforated screen and air cavity</div>
+        <p>Thin slits in the roof deck allow morning light to travel from roof to ground floor — tracking across the floor through the day. The work is half-implemented. Residents already report a difference. A thermal study is planned on completion.</p>
+      </div>
+    </div>
+
+    <div class="a-panel" id="a-2">
+      <div class="a-tag">Visual Notes · Hospitality</div>
+      <h1 class="a-title">Cave Café: <em>Designing for Privacy</em></h1>
+      <div class="a-meta">Studio Notes · 2024 · Bandra West, Mumbai</div>
+      <div class="a-body">
+        <p>The brief was to make a café feel like your own corner — not a space designed for visibility. Mumbai cafés are usually optimised for throughput. This client wanted the opposite: the sense of being sheltered.</p>
+        <div class="pull">"The cave — not as darkness, but as shelter. The feeling of being held."</div>
+        <div class="a-img"><img src="images/cafe_2.jpeg" alt="Café interior" /></div>
+        <div class="a-cap">Cave Café, Bandra West — arched alcoves and oval skylights</div>
+        <p>Individual alcoves along the perimeter, each with its own light pocket and a slight level change, create micro-territories within the larger volume. The oval oculi bring in diffused light. The green checkered marble floor, warm teak, and dusty pink upholstery build a sense of depth unusual for a mid-size hospitality space.</p>
+        <div class="a-img"><img src="images/cafe_1.jpeg" alt="Café evening view" /></div>
+        <div class="a-cap">Evening — bar counter and arched windows to the Bandra skyline</div>
+        <p>The arched windows along the western wall open to the city at dusk, backlighting tables without direct glare. You can see the street. The street cannot quite see you.</p>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ════════════ EXPERTISE ════════════ -->
+<section class="page" id="page-expertise">
+  <div class="e-head">
+    <h2>Areas of <em>Expertise</em></h2>
+    <p>We work across typologies, with consistent attention to context, climate, and how buildings are used.</p>
+  </div>
+  <div class="e-grid">
+    <div class="e-tile wide">
+      <div class="et-n">01</div><span class="et-ico">🏛</span>
+      <div class="et-title">Residential <em>Architecture</em></div>
+      <div class="et-desc">Bungalows, farmhouses, apartments, and community housing.</div>
+    </div>
+    <div class="e-tile">
+      <div class="et-n">02</div><span class="et-ico">☕</span>
+      <div class="et-title">Hospitality</div>
+      <div class="et-desc">Cafés, restaurants, and hotels where space and atmosphere are inseparable.</div>
+    </div>
+    <div class="e-tile">
+      <div class="et-n">03</div><span class="et-ico">🌿</span>
+      <div class="et-title">Climate-<em>Responsive</em> Design</div>
+      <div class="et-desc">Passive cooling, Jali systems, and courtyard typologies for India's climate zones.</div>
+    </div>
+    <div class="e-tile">
+      <div class="et-n">04</div><span class="et-ico">🏙</span>
+      <div class="et-title">Institutional <em>&amp; Community</em></div>
+      <div class="et-desc">Student housing and institutions where architecture contributes to identity.</div>
+    </div>
+    <div class="e-tile">
+      <div class="et-n">05</div><span class="et-ico">📐</span>
+      <div class="et-title">Vernacular <em>Research</em></div>
+      <div class="et-desc">Heritage building systems studied and applied to contemporary practice.</div>
+    </div>
+    <div class="e-tile wide">
+      <div class="et-n">06</div><span class="et-ico">🪴</span>
+      <div class="et-title">Landscape <em>&amp; Outdoor Rooms</em></div>
+      <div class="et-desc">Verandahs, courtyards, and terraces treated as primary spaces rather than afterthoughts.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════ STUDIO ════════════ -->
+<section class="page" id="page-about">
+  <div class="ab-img">
+    <img src="images/cafe_2.jpeg" alt="Studio project" />
+    <div class="ab-img-ov"></div>
+    <div class="ab-img-lbl">Architecture Rasa — Est. 2017, Jaipur</div>
+  </div>
+  <div class="ab-text">
+    <div class="ab-lbl">The Studio</div>
+    <h2 class="ab-name">Ar. <em>Amit Rasa</em></h2>
+    <div class="ab-role">Founder · Architecture Rasa · Jaipur</div>
+    <div class="ab-body">
+      <p>Ar. Amit Rasa grew up between a village and a city. That experience gave him an early interest in how architecture changes depending on who is using it and what they need from it. The practice is named for the Sanskrit concept of essence — the feeling a space leaves behind.</p>
+      <p>The studio works across residential, hospitality, and institutional projects, alongside ongoing research into vernacular building traditions and their relevance to contemporary climate challenges.</p>
+      <div class="ab-focus">
+        <div class="ab-focus-t">Current Research</div>
+        <div class="fi"><div class="fi-dot"></div>Vernacular typologies and modern integration</div>
+        <div class="fi"><div class="fi-dot"></div>Passive climate systems for arid zones</div>
+        <div class="fi"><div class="fi-dot"></div>Verandah and courtyard adaptation for multi-storey housing</div>
+        <div class="fi"><div class="fi-dot"></div>Heritage stone Jali as microclimate engineering</div>
+      </div>
+      <p>Based in Jaipur with active projects in Mumbai, Nashik, and Rajasthan. We take a limited number of projects each year.</p>
+      <div class="ab-actions">
+        <button class="ab-btn p" onclick="openContact()">Get in touch ↗</button>
+        <button class="ab-btn s" onclick="showPage('work')">See work →</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<div class="fbar">
+  <span>© 2025 Architecture Rasa</span>
+  <button class="fbar-cta" onclick="openContact()">Get in touch ↗</button>
+</div>
+
+<!-- CONTACT MODAL -->
+<div class="modal-bg" id="modal-bg">
+  <div class="modal-box">
+    <button class="m-close" onclick="closeContact()">✕</button>
+    <div class="m-title">Get in <em>touch</em></div>
+    <div class="m-sub">architecturerasa.in · Jaipur, Rajasthan</div>
+    <div class="mf"><label>Name</label><input type="text" placeholder="Your name" /></div>
+    <div class="mf"><label>Email</label><input type="email" placeholder="you@example.com" /></div>
+    <div class="mf"><label>Project</label><textarea rows="3" placeholder="A few lines about what you have in mind…"></textarea></div>
+    <button class="m-submit" onclick="submitContact()">Send →</button>
+    <div class="m-info">
+      <div class="m-info-i"><strong>Studio</strong>Jaipur, Rajasthan</div>
+      <div class="m-info-i"><strong>Email</strong>hello@architecturerasa.in</div>
+      <div class="m-info-i"><strong>Projects in</strong>Mumbai · Nashik · Jaipur</div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ── DATA ─────────────────────────────────────────────── */
+const PROJECTS = [
+  { cat:'Hospitality · Bandra West, Mumbai', title:'Cave Café',  sub:'Concept — Privacy of Cave with Individual Spaces',
+    imgs:['images/cafe_1.jpeg','images/cafe_2.jpeg'], labels:['Café — Evening','Café — Hall'] },
+  { cat:'Residential · Rajasthan', title:'Farmhouse', sub:'Open Spaces · Light · Wind',
+    imgs:['images/farmhouse_exterior.png','images/farmhouse_interior.png'], labels:['Farmhouse — Aerial','Farmhouse — Interior'] },
+  { cat:'Institutional · Nashik, Maharashtra', title:'JAT Chatravas', sub:'Community Identity · Facade · Public Space',
+    imgs:['images/jat_1.png','images/jat_2.png','images/jat_3.png'], labels:['JAT — Street','JAT — Terrace','JAT — Massing'] },
+];
+let ALL = [];
+PROJECTS.forEach((p,pi) => p.imgs.forEach((src,ii) => ALL.push({src, label:p.labels[ii], pi, ii})));
+
+let curPage = 'home';
+let filmF = 0, filmTarget = 0, filmFinal = 0, filmAnim = null;
+const DARK_PAGES = ['page-work'];
+
+/* ── NAV ─────────────────────────────────────────────── */
+function setNavTheme(pid) {
+  document.getElementById('main-nav').classList.toggle('nav-light', DARK_PAGES.includes(pid));
+}
+
+/* ── PAGE SWITCH ─────────────────────────────────────── */
+const isMob = () => window.innerWidth <= 768;
+
+function showPage(name) {
+  if (name === curPage) return;
+  closeMenu();
+  if (isMob()) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-links button').forEach(b => b.classList.remove('anav'));
+    const el = document.getElementById('page-' + name);
+    if (el) el.classList.add('active');
+    const nb = document.getElementById('n' + name[0]);
+    if (nb) nb.classList.add('anav');
+    curPage = name; window.scrollTo(0,0);
+    setNavTheme('page-' + name);
+    return;
+  }
+  const c = document.getElementById('curtain');
+  c.className = 'curtain in';
+  setTimeout(() => {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-links button').forEach(b => b.classList.remove('anav'));
+    const el = document.getElementById('page-' + name);
+    if (el) el.classList.add('active');
+    const nb = document.getElementById('n' + name[0]);
+    if (nb) nb.classList.add('anav');
+    curPage = name; c.className = 'curtain out';
+    setNavTheme('page-' + name);
+  }, 340);
+}
+
+/* ── HAMBURGER ───────────────────────────────────────── */
+let menuOpen = false;
+function toggleMenu() {
+  menuOpen = !menuOpen;
+  document.getElementById('hbg').classList.toggle('open', menuOpen);
+  document.getElementById('mob-menu').classList.toggle('open', menuOpen);
+}
+function closeMenu() {
+  menuOpen = false;
+  document.getElementById('hbg').classList.remove('open');
+  document.getElementById('mob-menu').classList.remove('open');
+}
+function mNav(t) { closeMenu(); t === 'contact' ? openContact() : showPage(t); }
+
+/* ── GALLERY ─────────────────────────────────────────── */
+function buildFilm() {
+  const t = document.getElementById('film-track'); t.innerHTML = '';
+  ALL.forEach((img, i) => {
+    const el = document.createElement('div');
+    el.className = 'film-it' + (i===0?' fa':'');
+    el.innerHTML = `<img src="${img.src}" alt="${img.label}" loading="lazy"/>`;
+    el.onclick = () => filmClick(i);
+    t.appendChild(el);
+  });
+}
+buildFilm();
+
+function filmClick(target) {
+  if (filmAnim) cancelAnimationFrame(filmAnim);
+  filmTarget = target;
+  const dist = Math.abs(target - filmF);
+  runFilm(dist > 3 ? 0.22 : 0.12);
+}
+
+function runFilm(spd) {
+  function step() {
+    const diff = filmTarget - filmF;
+    if (Math.abs(diff) < 0.04) {
+      filmF = filmTarget;
+      setFrame(Math.round(filmTarget), true);
+      document.getElementById('g-spd-fill').style.width = '0%';
+      return;
+    }
+    filmF += diff * spd;
+    setFrame(Math.max(0, Math.min(ALL.length-1, Math.round(filmF))), false);
+    const pct = 1 - Math.abs(diff) / Math.max(1, Math.abs(filmTarget));
+    document.getElementById('g-spd-fill').style.width = (Math.min(pct,1)*100)+'%';
+    filmAnim = requestAnimationFrame(step);
+  }
+  filmAnim = requestAnimationFrame(step);
+}
+
+function setFrame(idx, final) {
+  idx = Math.max(0, Math.min(ALL.length-1, idx));
+  document.getElementById('g-img').src = ALL[idx].src;
+  document.querySelectorAll('.film-it').forEach((el,i) => el.classList.toggle('fa', i===idx));
+  if (final) {
+    filmFinal = idx;
+    const p = PROJECTS[ALL[idx].pi];
+    document.getElementById('g-cat').textContent   = p.cat;
+    document.getElementById('g-title').textContent = p.title;
+    document.getElementById('g-sub').textContent   = p.sub;
+    document.querySelectorAll('.g-tile').forEach((t,i) => t.classList.toggle('ta', i===ALL[idx].pi));
+    document.querySelectorAll('.mob-tab').forEach((t,i) => t.classList.toggle('ta', i===ALL[idx].pi));
+  }
+}
+setFrame(0, true);
+
+function selProj(pi) {
+  let fi = 0; for(let i=0;i<pi;i++) fi += PROJECTS[i].imgs.length;
+  filmClick(fi);
+}
+
+/* ── ARTICLES ────────────────────────────────────────── */
+function selArt(idx) {
+  document.querySelectorAll('.m-item').forEach((el,i) => el.classList.toggle('ma', i===idx));
+  document.querySelectorAll('.a-panel').forEach((el,i) => {
+    const on = i===idx; el.classList.toggle('aa', on);
+    if (on) { el.style.display='none'; void el.offsetWidth; el.style.display='block'; }
+  });
+  const mc = document.querySelector('.m-content'); if(mc) mc.scrollTop=0;
+}
+
+/* ── CONTACT ─────────────────────────────────────────── */
+function openContact()  { document.getElementById('modal-bg').classList.add('open'); }
+function closeContact() { document.getElementById('modal-bg').classList.remove('open'); }
+function submitContact() {
+  const b = document.querySelector('.m-submit'); b.textContent='Sent ✓'; b.style.background='#4a5e4a';
+  setTimeout(() => { closeContact(); b.textContent='Send →'; b.style.background=''; }, 2000);
+}
+document.getElementById('modal-bg').addEventListener('click', e => { if(e.target===e.currentTarget) closeContact(); });
+
+/* ── KEYBOARD ────────────────────────────────────────── */
+document.addEventListener('keydown', e => {
+  if(e.key==='Escape') closeContact();
+  if(e.key==='ArrowRight' && curPage==='work') filmClick(Math.min(ALL.length-1, filmFinal+1));
+  if(e.key==='ArrowLeft'  && curPage==='work') filmClick(Math.max(0, filmFinal-1));
+});
+
+/* ── MOBILE HOME NAV ─────────────────────────────────── */
+function applyMob() {
+  const el = document.getElementById('mob-home-nav');
+  if (el) el.style.display = isMob() ? 'flex' : 'none';
+}
+applyMob();
+window.addEventListener('resize', applyMob);
+
+/* ── INIT ────────────────────────────────────────────── */
+setNavTheme('page-home');
+</script>
+</body>
+</html>
